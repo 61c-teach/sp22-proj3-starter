@@ -12,8 +12,12 @@ venus_path = tools_dir / "venus.jar"
 
 
 def print_same_line(line):
-    cols, rows = shutil.get_terminal_size(80)
-    sys.stdout.write("\r" + textwrap.shorten(line, cols))
+    try:
+        cols, rows = shutil.get_terminal_size(fallback=(80, 24))
+        line = textwrap.shorten(line, cols)
+    except:
+        pass
+    sys.stdout.write("\r" + line)
 
 
 def print_progress(prefix, filename, bytes_total, bytes_read):
