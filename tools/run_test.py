@@ -93,6 +93,8 @@ def find_banned(circ_path):
 
 
 starter_file_hashes = {
+    "harnesses/cpu-harness.circ": "875d04f0180d73d6c7b98a8108f4227b",
+    "harnesses/run.circ": "e6749025caccb9a7ff35320adcc3dcf6",
     "tests/integration-addi/addi-basic.circ": "26be508addd9e250793b568739e23b8b",
     "tests/integration-addi/addi-negative.circ": "2c672ef9eede29c49c489f1759482b17",
     "tests/integration-addi/addi-positive.circ": "84a9dc112634a226313aec4e8bd4e834",
