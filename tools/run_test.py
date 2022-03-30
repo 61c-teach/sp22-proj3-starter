@@ -13,6 +13,7 @@ import time
 import traceback
 
 from diff_output import diff_output
+from fetch_encoding import update_imm_circ
 
 
 CIRC_IMPORT_REGEX = re.compile(r"desc=\"file#([^\"]+?\.circ)\"")
@@ -45,6 +46,12 @@ known_imports_dict = {
     "harnesses/alu-harness.circ": [
         "cpu/alu.circ",
     ],
+    "harnesses/imm-gen-harness.circ": [
+        "cpu/imm-gen.circ",
+    ],
+    "harnesses/branch-comp-harness.circ": [
+        "cpu/branch-comp.circ",
+    ],
     "harnesses/cpu-harness.circ": [
         "cpu/cpu.circ",
         "cpu/mem.circ",
@@ -60,6 +67,9 @@ known_imports_dict = {
     ],
     "tests/unit-regfile/*.circ": [
         "cpu/regfile.circ",
+    ],
+    "tests/unit-partial-load/*.circ": [
+        "cpu/partial-load.circ",
     ],
     "tests/integration-*/*.circ": [
         "harnesses/cpu-harness.circ",
@@ -83,8 +93,6 @@ def find_banned(circ_path):
 
 
 starter_file_hashes = {
-    "harnesses/cpu-harness.circ": "875d04f0180d73d6c7b98a8108f4227b",
-    "harnesses/run.circ": "e6749025caccb9a7ff35320adcc3dcf6",
     "tests/integration-addi/addi-basic.circ": "26be508addd9e250793b568739e23b8b",
     "tests/integration-addi/addi-negative.circ": "2c672ef9eede29c49c489f1759482b17",
     "tests/integration-addi/addi-positive.circ": "84a9dc112634a226313aec4e8bd4e834",
@@ -94,6 +102,42 @@ starter_file_hashes = {
     "tests/integration-addi/out/addi-negative.ref": "8c4f4354e017d347a246b549c0a7c019",
     "tests/integration-addi/out/addi-positive.piperef": "554b05ad4952e65e3ac8844f36c0394e",
     "tests/integration-addi/out/addi-positive.ref": "079f17180d45eb7104220427f6360412",
+    "tests/integration-all-regs/all-regs-basic.circ": "0c845f6bbacd46bd8cb36ad725d2ebc3",
+    "tests/integration-all-regs/out/all-regs-basic.piperef": "1a294bd256f2900d58a05a30f8cb19a0",
+    "tests/integration-all-regs/out/all-regs-basic.ref": "5859036aac504f27418af1dddfb6128e",
+    "tests/integration-branch/branch-basic.circ": "dc29bd14820608b5c2f039aa86504b21",
+    "tests/integration-branch/out/branch-basic.piperef": "26eeaf22f577024bf2c501f27f032ce9",
+    "tests/integration-branch/out/branch-basic.ref": "5673c41c4955ffecf1b6815c6ba244cc",
+    "tests/integration-programs/programs-fib.circ": "6f6e57d2eb340bde18a289f79bb3fd14",
+    "tests/integration-programs/programs-power.circ": "88f37938a517029ba69d3399bc45a295",
+    "tests/integration-programs/out/programs-fib.piperef": "b2723e49f6e2bf889c9c5a26f8a034ec",
+    "tests/integration-programs/out/programs-fib.ref": "98b7fd0d0545cd66c747dbf30d0eb114",
+    "tests/integration-programs/out/programs-power.piperef": "02108bb7b96a90ef93b2a87afa60ff7b",
+    "tests/integration-programs/out/programs-power.ref": "a727b44291c2efc8ed1c319ac5929b99",
+    "tests/integration-immediates/immediates-basic.circ": "6e82c5584fc8739cc6ce129c0b6ad976",
+    "tests/integration-immediates/out/immediates-basic.piperef": "0d97830b0c73851d9a8b55487e2650ee",
+    "tests/integration-immediates/out/immediates-basic.ref": "6da63f3c1b24f300abca821c7b7b7eec",
+    "tests/integration-jump/jump-basic.circ": "27097f9c1006ee0a47f099b536b39095",
+    "tests/integration-jump/jump-empty.circ": "644238d311124df295ef5ed7b6765088",
+    "tests/integration-jump/jump-far.circ": "0adb81c95f5d1debde5896fcdd23d551",
+    "tests/integration-jump/out/jump-basic.piperef": "23a000a99fd7da605c7d0956bec7421e",
+    "tests/integration-jump/out/jump-basic.ref": "7596edead8499ee707032f40a36d1195",
+    "tests/integration-jump/out/jump-empty.piperef": "cfbe380fd5e9e0ea6558e6e58e7ecb8a",
+    "tests/integration-jump/out/jump-empty.ref": "fe6d0e0373a367879e4ed244c00dc71d",
+    "tests/integration-jump/out/jump-far.piperef": "30565d9c925b08c32f3994f59e0f7189",
+    "tests/integration-jump/out/jump-far.ref": "ed18fd0e1ccc3a05c22d60d001a50e15",
+    "tests/integration-lui/lui-basic.circ": "a692841f783e7024a59e847ac281b117",
+    "tests/integration-lui/out/lui-basic.piperef": "89bc4cda38d269d7174babfd4706d43d",
+    "tests/integration-lui/out/lui-basic.ref": "dd77a9439d6e8f1809e2e8d2ec4610ea",
+    "tests/integration-mem/mem-load-basic.circ": "068e3b6ea7cd07a0a641fe24bed43ce1",
+    "tests/integration-mem/mem-sign-extend.circ": "9402a45caa076cf0104c0b9e342865d3",
+    "tests/integration-mem/mem-store-basic.circ": "18a1942202e2d2459781281afb1cdcba",
+    "tests/integration-mem/out/mem-load-basic.piperef": "b605abe6bd1179ca65e75ee44a2b4d9f",
+    "tests/integration-mem/out/mem-load-basic.ref": "ec15cb3d0bf51001f5afc5926cd25786",
+    "tests/integration-mem/out/mem-sign-extend.piperef": "d158338ecfcb249a589deed5a8c8ee99",
+    "tests/integration-mem/out/mem-sign-extend.ref": "b7f514f6a8df4f716deff9039f1be3c5",
+    "tests/integration-mem/out/mem-store-basic.piperef": "7dc25fcd6505835a734e88226524344d",
+    "tests/integration-mem/out/mem-store-basic.ref": "b0bd3f8d5c28aa44a5908b9ce40f6c6f",
     "tests/unit-alu/alu-add.circ": "5aa4d556f4e928400f619176c39b00de",
     "tests/unit-alu/alu-all.circ": "c2ce7e4c3ca3a790edca4c1b7812029b",
     "tests/unit-alu/alu-logic.circ": "91bac4cc56aad4e3923b812d8549d3ad",
@@ -106,6 +150,24 @@ starter_file_hashes = {
     "tests/unit-alu/out/alu-mult.ref": "ef42ed4cf4c85efc3f1e7a414e2012b1",
     "tests/unit-alu/out/alu-shift.ref": "09a61bb272d6563dcfa35d76840765ec",
     "tests/unit-alu/out/alu-slt-sub-bsel.ref": "a27b828a9e4d093aaff92b7183cd9fb0",
+    "tests/unit-branch-comp/branch-comp-signed.circ": "907b40b5b0446d7be46c4ec57f6884d1",
+    "tests/unit-branch-comp/branch-comp-unsigned.circ": "6d0b0f7529872454869b2695a423218a",
+    "tests/unit-branch-comp/out/branch-comp-signed.ref": "649019e9690f30cf3a345f4a5e8f2b23",
+    "tests/unit-branch-comp/out/branch-comp-unsigned.ref": "3c407d05cf821438e7fd93cf0c24be73",
+    "tests/unit-partial-load/out/partial-load-byte.ref": "b06a9f39d91399ada2076dbabda0b044",
+    "tests/unit-partial-load/out/partial-load-half.ref": "29eef73a529a567327be8348123dee12",
+    "tests/unit-partial-load/out/partial-load-word.ref": "4d30a508d7c07f7eabc67a8dcfe0bffc",
+    "tests/unit-partial-load/partial-load-byte.circ": "1d7abe2774c9fb070d91e2479ef3da24",
+    "tests/unit-partial-load/partial-load-half.circ": "597a5603455639f48590470f3f4f2d38",
+    "tests/unit-partial-load/partial-load-word.circ": "c6960e9864bb13b6551a1f998d5cadf4",
+    "tests/unit-partial-store/out/partial-store-byte.ref": "90602d0200dbdc12e37db0323e7baf44",
+    "tests/unit-partial-store/out/partial-store-half.ref": "9f7da576870d2578acef009b3b3fc5ad",
+    "tests/unit-partial-store/out/partial-store-non-store.ref": "f1cded4242cb0030a4eaabd90e44c51a",
+    "tests/unit-partial-store/out/partial-store-word.ref": "03c331ff93622577e349dec9aed01cf2",
+    "tests/unit-partial-store/partial-store-byte.circ": "da7fe1a86a7c25b585058a488ff02d1b",
+    "tests/unit-partial-store/partial-store-half.circ": "c7cd7b6ca8e40ed83d646a8652892d91",
+    "tests/unit-partial-store/partial-store-non-store.circ": "f1a174e17f7ca45d46bbdcaf8fcbbe82",
+    "tests/unit-partial-store/partial-store-word.circ": "ddf483cdd60be07248c848e01d0031fe",
     "tests/unit-regfile/out/regfile-more-regs.ref": "130731ddabf0a2c0d93e086cb57acc72",
     "tests/unit-regfile/out/regfile-read-only.ref": "64b6676bbb583d6a20564061cf680501",
     "tests/unit-regfile/out/regfile-read-write.ref": "127daa136c232f0ea623323d85b45972",
@@ -169,34 +231,35 @@ class TestCase:
             pipelined = False
         passed = False
         proc = None
-        try:
-            proc = subprocess.Popen(
-                [
-                    "java",
-                    "-jar",
-                    str(logisim_path),
-                    "-tty",
-                    "table,binary,csv",
-                    str(self.circ_path),
-                ],
-                stdout=subprocess.PIPE,
-                encoding="utf-8",
-                errors="ignore",
-            )
 
-            with self.get_expected_table_path(pipelined=pipelined).open(
-                "r", encoding="utf-8", errors="ignore"
-            ) as expected_file:
-                passed = self.check_output(proc.stdout, expected_file)
-                kill_proc(proc)
-                if not passed:
-                    with redirect_stdout(StringIO()) as s:
-                        diff_output(self.circ_path, pipelined)
-                        s.flush()
-                        s.seek(0)
-                        diff = s.read().strip("\n")
-                    return False, "Did not match expected output", diff
-                return True, "Matched expected output", None
+        output_path = self.get_actual_table_path()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with output_path.open("w") as output_file:
+                proc = subprocess.Popen(
+                    [
+                        "java",
+                        "-jar",
+                        str(logisim_path),
+                        "-tty",
+                        "table,binary,csv",
+                        str(self.circ_path),
+                    ],
+                    stdout=output_file,
+                    encoding="utf-8",
+                    errors="ignore",
+                )
+                proc.wait()
+
+            with redirect_stdout(StringIO()) as s:
+                passed = diff_output(self.circ_path, pipelined)
+                s.flush()
+                s.seek(0)
+                diff = s.read().strip("\n")
+
+            if not passed:
+                return False, "Did not match expected output", diff
+            return True, "Matched expected output", None
         except KeyboardInterrupt:
             kill_proc(proc)
             sys.exit(1)
@@ -204,29 +267,6 @@ class TestCase:
             traceback.print_exc()
             kill_proc(proc)
         return False, "Errored while running test", None
-
-    def check_output(self, actual_file, expected_file):
-        passed = True
-        actual_csv = csv.reader(actual_file)
-        expected_csv = csv.reader(expected_file)
-        actual_lines = []
-        while True:
-            actual_line = next(actual_csv, None)
-            expected_line = next(expected_csv, None)
-            if expected_line is None:
-                break
-            if actual_line != expected_line:
-                passed = False
-            if actual_line is None:
-                break
-            actual_lines.append(actual_line)
-        output_path = self.get_actual_table_path()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("w") as output_file:
-            output_csv = csv.writer(output_file, lineterminator="\n")
-            for line in actual_lines:
-                output_csv.writerow(line)
-        return passed
 
 
 def fix_circ(circ_path):
@@ -299,6 +339,9 @@ def run_tests(search_paths, pipelined=False):
     failed_tests = []
     passed_tests = []
     for circ_path in circ_paths:
+        if "imm" in str(circ_path):
+            update_imm_circ()
+
         test = TestCase(circ_path)
         did_pass, reason = False, "Unknown test error"
         try:
@@ -328,14 +371,14 @@ def check_hash(path):
     rel_path = path.resolve().relative_to(proj_dir_path.resolve())
     rel_path_str = rel_path.as_posix()
     if rel_path_str not in starter_file_hashes:
-        return (True, f"Starter does not have hash for {path.name}")
+        return (True, f"Starter does not have hash for {rel_path_str}")
     with path.open("rb") as f:
         contents = f.read()
     contents = contents.replace(b"\r\n", b"\n")
     hashed_val = hashlib.md5(contents).hexdigest()
     if hashed_val != starter_file_hashes[rel_path_str]:
-        return (False, f"{path.name} was changed from starter")
-    return (True, f"{path.name} matches starter file")
+        return (False, f"{rel_path_str} was changed from starter")
+    return (True, f"{rel_path_str} matches starter file")
 
 
 def kill_proc(proc):

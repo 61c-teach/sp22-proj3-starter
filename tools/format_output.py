@@ -3,6 +3,23 @@ import argparse
 import csv
 import math
 
+
+def masked_mem_data_formatter(val, row):
+    write_mask = row["MemWriteMask"]
+    mask = write_mask[0] * 8 + write_mask[1] * 8 + write_mask[2] * 8 + write_mask[3] * 8
+    masked_val = "".join(["-" if mask[i] == "0" else val[i] for i in range(len(val))])
+    return bin2hex_formatter(masked_val, row)
+
+
+def masked_imm_gen_shift_formatter(val, row):
+    masked_val = "".join(["0"] * 27) + val[-5:]
+    return bin2hex_formatter(masked_val, row)
+
+
+def bin2hex_formatter(val, _):
+    return bin2hex(val).rjust(math.ceil(len(val) / 4), "0")
+
+
 known_formats = {
     "tests/unit-alu/out/*": [
         ["Test", "Time"],
@@ -28,6 +45,42 @@ known_formats = {
         ["a0", "a0 (x10)"],
         ["RegReadData1", "RegReadData1"],
         ["RegReadData2", "RegReadData2"],
+    ],
+    "tests/unit-branch-comp/out/*": [
+        ["Test", "Time"],
+        ["BrData1", "BrData1"],
+        ["BrData2", "BrData2"],
+        ["BrUn", "BrUn"],
+        ["BrEq", "BrEq"],
+        ["BrLt", "BrLt"],
+    ],
+    "tests/unit-imm-gen/out/imm-gen-i-type-shift*": [
+        ["Test", "Time"],
+        ["Instruction", "Instruc."],
+        ["ImmSel", "ImmSel"],
+        ["Immediate", "Immediate", masked_imm_gen_shift_formatter],
+    ],
+    "tests/unit-imm-gen/out/*": [
+        ["Test", "Time"],
+        ["Instruction", "Instruc."],
+        ["ImmSel", "ImmSel"],
+        ["Immediate", "Immediate"],
+    ],
+    "tests/unit-partial-load/out/*": [
+        ["Test", "Time"],
+        ["Instruction", "Instruc."],
+        ["MemAddress", "MemAddress"],
+        ["DataFromMem", "DataFromMem"],
+        ["DataToReg", "DataToReg"],
+    ],
+    "tests/unit-partial-store/out/*": [
+        ["Test", "Time"],
+        ["Instruction", "Instruc."],
+        ["MemAddress", "MemAddress"],
+        ["MemWEn", "MemWEn"],
+        ["DataFromReg", "DataFromReg"],
+        ["DataToMem", "DataToMem", masked_mem_data_formatter],
+        ["MemWriteMask", "MemWriteMask"],
     ],
     "tests/integration-*/out/*": [
         ["TimeStep", "Time"],
@@ -55,6 +108,8 @@ def bin2hex(bin_str):
             hex_str += "X"
         elif "U" in group:
             hex_str += "U"
+        elif "-" in group:
+            hex_str += "-"
         else:
             hex_str += format(int(group, 2), "x")
     return hex_str
@@ -72,8 +127,14 @@ def print_line(arr, lengths, remap=None):
         print(f"{cell}", end=suffix)
 
 
-def format_line(arr):
-    return [bin2hex(bin_str).rjust(math.ceil(len(bin_str) / 4), "0") for bin_str in arr]
+def format_line(arr, formatters=None, header_line=None):
+    arr_map = None
+    if header_line:
+        arr_map = dict(zip(header_line, arr))
+    return [
+        (formatters and formatters[i] or bin2hex_formatter)(bin_str, arr_map)
+        for i, bin_str in enumerate(arr)
+    ]
 
 
 def format_output(output_path):
@@ -88,22 +149,33 @@ def format_output(output_path):
             print(f"{str(output_path)} has no rows")
             return
         column_remap = list(range(len(header_line)))
+        formatters = [None] * len(header_line)
         for glob, column_order in known_formats.items():
             if output_path.match(glob):
                 column_remap = [
-                    header_line.index(cur_name) for cur_name, _ in column_order
+                    header_line.index(cur_name) for cur_name, *_ in column_order
                 ]
-                for (_, new_name), i in zip(column_order, column_remap):
+                for (_, new_name, *extra), i in zip(column_order, column_remap):
                     header_line[i] = new_name
+                    if extra:
+                        formatters[i] = extra[0]
                 break
         column_lengths = [
             max(len(h), math.ceil(len(o) / 4)) for h, o in zip(header_line, output_line)
         ]
         print_line(header_line, lengths=column_lengths, remap=column_remap)
-        print_line(format_line(output_line), lengths=column_lengths, remap=column_remap)
+        print_line(
+            format_line(output_line, formatters=formatters, header_line=header_line),
+            lengths=column_lengths,
+            remap=column_remap,
+        )
         for output_line in output_csv:
             print_line(
-                format_line(output_line), lengths=column_lengths, remap=column_remap
+                format_line(
+                    output_line, formatters=formatters, header_line=header_line
+                ),
+                lengths=column_lengths,
+                remap=column_remap,
             )
 
 

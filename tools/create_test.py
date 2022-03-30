@@ -1,10 +1,13 @@
 from pathlib import Path
 import argparse
 import csv
+import hashlib
+import json
 import os
 import subprocess
 import sys
 import tempfile
+import traceback
 
 
 HARNESS_IMPORT_REF = "file#cpu-harness.circ"
@@ -30,10 +33,20 @@ cpu_harness_circ_path = proj_dir_path / "harnesses" / "cpu-harness.circ"
 run_circ_path = proj_dir_path / "harnesses" / "run.circ"
 logisim_path = proj_dir_path / "tools" / "logisim.jar"
 venus_path = proj_dir_path / "tools" / "venus.jar"
+hashes_path = proj_dir_path / "tools" / ".hashes.json"
 
 
 class TestCreateException(Exception):
     pass
+
+
+def get_hash(path):
+    if not path.is_file():
+        return None
+    with path.open("rb") as f:
+        contents = f.read()
+    contents = contents.replace(b"\r\n", b"\n")
+    return hashlib.md5(contents).hexdigest()
 
 
 def generate_test_circ(asm_path, test_circ_path, slug, num_cycles):
@@ -160,26 +173,35 @@ def generate_output(
     return detected_num_cycles
 
 
-def create_test(asm_path, num_cycles=-1):
+def create_test(asm_path, hashes, num_cycles=-1, force=False):
     if not asm_path.is_file() or asm_path.suffix != ".s":
+        # Extension != filetype. but good enough
         print(f"Error: {str(asm_path)} is not a RISC-V assembly file, skipping")
         return
-    if not asm_path.resolve().match("inputs/*.s"):
-        print(f"Error: {str(asm_path)} is not in an inputs/ dir, skipping")
+    if not asm_path.resolve().match("in/*.s"):
+        print(f"Error: {str(asm_path)} is not in an in/ dir, skipping")
         return
-    if not asm_path.resolve().match("tests-custom/inputs/*.s"):
-        print(f"Warning: {str(asm_path)} is not in test-custom/inputs/")
+    is_custom_test = asm_path.resolve().match("tests/integration-custom/in/*.s")
+    if not is_custom_test:
+        print(f"Warning: {str(asm_path)} is not in tests/integration-custom/in/")
 
     slug = asm_path.stem
-    test_slug = f"cpu-{slug}"
     test_dir_path = asm_path.parent.parent
-    reference_output_dir_path = test_dir_path / "reference-output"
+    output_dir_path = test_dir_path / "out"
 
-    test_circ_path = test_dir_path / f"{test_slug}.circ"
-    reference_output_1stage_path = reference_output_dir_path / f"{test_slug}-ref.out"
-    reference_output_2stage_path = (
-        reference_output_dir_path / f"{test_slug}-pipelined-ref.out"
-    )
+    test_circ_path = test_dir_path / f"{slug}.circ"
+    reference_output_1stage_path = output_dir_path / f"{slug}.ref"
+    reference_output_2stage_path = output_dir_path / f"{slug}.piperef"
+
+    if not force and is_custom_test and slug in hashes:
+        hash_data = hashes[slug]
+        if hash_data.get("input") == get_hash(asm_path) and hash_data.get(
+            "circ"
+        ) == get_hash(test_circ_path):
+            print(f"[{slug}] no changes, skipping")
+            return
+
+    output_dir_path.mkdir(exist_ok=True)
 
     print(f"[{slug}] creating {test_circ_path.name}...")
     try:
@@ -204,12 +226,30 @@ def create_test(asm_path, num_cycles=-1):
         print(f"[{slug}] error: {str(ex)}")
         return
 
+    if is_custom_test:
+        hashes[slug] = {
+            "input": get_hash(asm_path),
+            "circ": get_hash(test_circ_path),
+        }
 
-def create_tests(asm_paths, num_cycles=-1):
+
+def create_tests(asm_paths, num_cycles=-1, force=False):
     asm_paths = sorted(asm_paths)
 
+    hashes = {}
+    if hashes_path.is_file():
+        try:
+            with hashes_path.open("r") as hashes_file:
+                hashes = json.load(hashes_file)
+        except:
+            traceback.print_exc()
+
     for asm_path in asm_paths:
-        create_test(asm_path, num_cycles)
+        create_test(asm_path, hashes=hashes, num_cycles=num_cycles, force=force)
+
+    hashes_path.parent.mkdir(exist_ok=True)
+    with hashes_path.open("w") as hashes_file:
+        json.dump(hashes, hashes_file)
 
 
 if __name__ == "__main__":
@@ -218,7 +258,7 @@ if __name__ == "__main__":
         "input_path",
         help="Path to a RISC-V assembly file containing instructions for a test",
         type=Path,
-        nargs="+",
+        nargs="*",
     )
     parser.add_argument(
         "-c",
@@ -227,6 +267,19 @@ if __name__ == "__main__":
         type=int,
         default=-1,
     )
+    parser.add_argument(
+        "-f",
+        "--force",
+        help="Force regeneration",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
 
-    create_tests(args.input_path, args.cycles)
+    input_paths = args.input_path
+    if not input_paths:
+        input_paths = (proj_dir_path / "tests" / "integration-custom" / "in").glob(
+            "*.s"
+        )
+
+    create_tests(input_paths, args.cycles, args.force)

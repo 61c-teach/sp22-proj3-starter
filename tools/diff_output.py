@@ -44,8 +44,8 @@ def diff_output(circ_path, pipelined):
 
     if ref_output[0] != student_output[0]:
         print(f"Error: files have different headers")
-        print(f"       Reference: {ref_output[0]}")
-        print(f"       Student:   {student_output[0]}")
+        print(f"Reference: {ref_output[0].strip()}")
+        print(f"Student:   {student_output[0].strip()}")
 
     # Print header with space before
     header_str = "           " + ref_output[0].strip()
@@ -73,17 +73,19 @@ def diff_output(circ_path, pipelined):
         for line in ref_output:
             output.append(f"Reference: {line.strip()}")
         output.append("---")
-    elif student_output:
-        output.append("The following lines are in student output only")
-        output.append(header_str)
-        for line in student_output:
-            output.append(f"Student:   {line.strip()}")
-        output.append("---")
+    # elif student_output:
+    #     output.append("The following lines are in student output only")
+    #     output.append(header_str)
+    #     for line in student_output:
+    #         output.append(f"Student:   {line.strip()}")
+    #     output.append("---")
 
     if not output:
         print("The student file is identical to the reference file")
+        return True
     else:
         print("\n".join(output))
+        return False
 
 
 if __name__ == "__main__":

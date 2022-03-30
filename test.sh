@@ -24,14 +24,34 @@ fi
 
 help() {
   echo "------------------------------HELP------------------------------"
-  echo "To download Logisim & Venus, type: bash test.sh download_tools"
+  echo "To download Logisim & Venus: bash test.sh download_tools"
   echo "Part A:"
-  echo "    To run all part A tests, type: bash test.sh part_a"
-  echo "    To test ALU, type:             bash test.sh test_alu"
-  echo "    To test RegFile, type:         bash test.sh test_regfile"
-  echo "    To test addi, type:            bash test.sh test_addi"
-  echo "Part B:"
-  echo "    TODO"
+  echo "    All part A tests:       bash test.sh part_a"
+  echo "    ALU:                    bash test.sh test_alu"
+  echo "    RegFile:                bash test.sh test_regfile"
+  echo "    addi:                   bash test.sh test_addi"
+  echo ""
+  echo "Part B - All Tests:         bash test.sh part_b"
+  echo "Part B - Unit Tests:"
+  echo "    Branch comparator:      bash test.sh test_branch_comp"
+  echo "    Immediate generator:    bash test.sh test_imm_gen"
+  echo "    Partial load:           bash test.sh test_partial_load"
+  echo "    Partial store:          bash test.sh test_partial_store"
+  echo "Part B - Integration Tests (not comprehensive):"
+  echo "    Registers:              bash test.sh test_integration_all_regs"
+  echo "    Branches:               bash test.sh test_integration_branch"
+  echo "    Immediates:             bash test.sh test_integration_immediates"
+  echo "    Jumps:                  bash test.sh test_integration_jump"
+  echo "    lui:                    bash test.sh test_integration_lui"
+  echo "    Memory:                 bash test.sh test_integration_mem"
+  echo "    Basic programs:         bash test.sh test_integration_programs"
+  echo "Part B - Custom Tests:"
+  echo "    Create and run custom tests:    bash test.sh test_custom"
+  echo "    To only create custom tests:    bash test.sh create_custom"
+  echo "    To only run custom tests:       bash test.sh run_custom"
+  echo "Part B - Pipelined:"
+  echo "    Add --pipelined after any command above"
+  echo "    Example: bash test.sh run_custom --pipelined"
   echo "----------------------------------------------------------------"
 }
 
@@ -61,10 +81,74 @@ case "${1}" in
     "${python_exec}" tools/run_test.py ${@:2} tests/unit-regfile/
     ;;
   part_b)
-    echo "To be released"
+    echo "Unit testing branch comparator:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-branch-comp/
+    echo "Unit testing immediate generator:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-imm-gen/
+    echo "Unit testing partial load:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-partial-load/
+    echo "Unit testing partial store:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-partial-store/
+    echo "Integration testing all registers:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-all-regs/
+    echo "Integration testing branches:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-branch/
+    echo "Integration testing immediates:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-immediates/
+    echo "Integration testing jumps:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-jump/
+    echo "Integration testing lui:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-lui/
+    echo "Integration testing memory:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-mem/
+    echo "Integration testing basic programs:"
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-programs/
     ;;
-  create_test)
+  test_branch_comp)
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-branch-comp/
+    ;;
+  test_imm_gen)
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-imm-gen/
+    ;;
+  test_partial_load)
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-partial-load/
+    ;;
+  test_partial_store)
+    "${python_exec}" tools/run_test.py ${@:2} tests/unit-partial-store/
+    ;;
+  test_integration_all_regs)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-all-regs/
+    ;;
+  test_integration_branch)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-branch/
+    ;;
+  test_integration_immediates)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-immediates/
+    ;;
+  test_integration_jump)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-jump/
+    ;;
+  test_integration_lui)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-lui/
+    ;;
+  test_integration_mem)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-mem/
+    ;;
+  test_integration_programs)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-programs/
+    ;;
+  test_custom)
+    "${python_exec}" tools/create_test.py
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-custom/
+    ;;
+  create_custom)
     "${python_exec}" tools/create_test.py ${@:2}
+    ;;
+  run_custom)
+    "${python_exec}" tools/run_test.py ${@:2} tests/integration-custom/
+    ;;
+  run)
+    "${python_exec}" tools/run_test.py ${@:2}
     ;;
   diff)
     "${python_exec}" tools/diff_output.py ${@:2}
