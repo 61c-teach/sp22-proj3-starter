@@ -273,4 +273,5 @@ Sessionx.vim
 /student.csv
 /student.out
 /tests/**/*.out
+/tools/.hashes.json
 *.jar
