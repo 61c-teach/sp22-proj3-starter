@@ -49,6 +49,11 @@ def get_hash(path):
     return hashlib.md5(contents).hexdigest()
 
 
+def check_hash(data, key, path):
+    expected = data.get(key)
+    return expected and get_hash(path) == expected
+
+
 def generate_test_circ(asm_path, test_circ_path, slug, num_cycles):
     venus_cmd = ["java", "-jar", str(venus_path), str(asm_path), "--dump"]
     tmp_inst_hex_file = tempfile.NamedTemporaryFile(delete=False)
@@ -195,9 +200,12 @@ def create_test(asm_path, hashes, num_cycles=-1, force=False):
 
     if not force and is_custom_test and slug in hashes:
         hash_data = hashes[slug]
-        if hash_data.get("input") == get_hash(asm_path) and hash_data.get(
-            "circ"
-        ) == get_hash(test_circ_path):
+        if (
+            check_hash(hash_data, "input", asm_path)
+            and check_hash(hash_data, "circ", test_circ_path)
+            and check_hash(hash_data, "ref", reference_output_1stage_path)
+            and check_hash(hash_data, "piperef", reference_output_2stage_path)
+        ):
             print(f"[{slug}] no changes, skipping")
             return
 
@@ -230,6 +238,8 @@ def create_test(asm_path, hashes, num_cycles=-1, force=False):
         hashes[slug] = {
             "input": get_hash(asm_path),
             "circ": get_hash(test_circ_path),
+            "ref": get_hash(reference_output_1stage_path),
+            "piperef": get_hash(reference_output_2stage_path),
         }
 
 
